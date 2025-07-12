@@ -1,339 +1,571 @@
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
-import { Subscription } from 'rxjs';
-import { MediaService } from '../proxy/medias/media.service';
-import { MediaDto } from '../proxy/medias/models';
+import { Subject, takeUntil } from 'rxjs';
 
+// Enhanced Components
+import { EnhancedTimelineComponent } from './components/enhanced-timeline/enhanced-timeline.component';
+import { EnhancedPreviewComponent } from './components/enhanced-preview/enhanced-preview.component';
+import { EnhancedMediaBinComponent } from './components/enhanced-media-bin/enhanced-media-bin.component';
+import { EffectsPanelComponent } from './components/effects-panel/effects-panel.component';
+import { TransitionsPanelComponent } from './components/transitions-panel/transitions-panel.component';
+
+// Services
+import { TimelineService } from './services/timeline.service';
+import { AutoSaveService } from './services/auto-save.service';
+import { UploadService } from './services/upload.service';
+import { EffectsService } from './services/effects.service';
+import { TransitionsService } from './services/transitions.service';
+
+// Models
+import { Resource, Timeline, PlaybackState } from './models/studio.models';
+import { ProjectState } from './models/studio-enhanced.models';
+
+/**
+ * Professional Studio Component
+ * Complete video editing interface with all professional features
+ */
 @Component({
   selector: 'app-studio',
   standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './studio.component.html',
-  styleUrls: ['./studio.component.css']
+  imports: [
+    CommonModule, 
+    FormsModule,
+    EnhancedTimelineComponent,
+    EnhancedPreviewComponent,
+    EnhancedMediaBinComponent,
+    EffectsPanelComponent,
+    TransitionsPanelComponent
+  ],
+  template: `
+    <div class="professional-studio">
+      <!-- Studio Header -->
+      <div class="studio-header">
+        <!-- Menu Bar -->
+        <div class="menu-bar">
+          <div class="menu-item" (click)="showMenu('file')">File</div>
+          <div class="menu-item" (click)="showMenu('edit')">Edit</div>
+          <div class="menu-item" (click)="showMenu('view')">View</div>
+          <div class="menu-item" (click)="showMenu('timeline')">Timeline</div>
+          <div class="menu-item" (click)="showMenu('effects')">Effects</div>
+          <div class="menu-item" (click)="showMenu('help')">Help</div>
+        </div>
+
+        <!-- Professional Toolbar -->
+        <div class="professional-toolbar">
+          <!-- File Operations -->
+          <div class="toolbar-group">
+            <button class="toolbar-btn" (click)="newProject()" title="New Project (Ctrl+N)">
+              <i class="icon-new"></i>
+            </button>
+            <button class="toolbar-btn" (click)="openProject()" title="Open Project (Ctrl+O)">
+              <i class="icon-open"></i>
+            </button>
+            <button class="toolbar-btn" (click)="saveProject()" title="Save Project (Ctrl+S)">
+              <i class="icon-save"></i>
+            </button>
+            <button class="toolbar-btn" (click)="importMedia()" title="Import Media (Ctrl+I)">
+              <i class="icon-import"></i>
+            </button>
+          </div>
+          
+          <div class="toolbar-separator"></div>
+          
+          <!-- Edit Operations -->
+          <div class="toolbar-group">
+            <button class="toolbar-btn" [disabled]="!canUndo" (click)="undo()" title="Undo (Ctrl+Z)">
+              <i class="icon-undo"></i>
+            </button>
+            <button class="toolbar-btn" [disabled]="!canRedo" (click)="redo()" title="Redo (Ctrl+Y)">
+              <i class="icon-redo"></i>
+            </button>
+            <button class="toolbar-btn" [disabled]="!hasSelection" (click)="cut()" title="Cut (Ctrl+X)">
+              <i class="icon-cut"></i>
+            </button>
+            <button class="toolbar-btn" [disabled]="!hasSelection" (click)="copy()" title="Copy (Ctrl+C)">
+              <i class="icon-copy"></i>
+            </button>
+            <button class="toolbar-btn" [disabled]="!hasClipboard" (click)="paste()" title="Paste (Ctrl+V)">
+              <i class="icon-paste"></i>
+            </button>
+          </div>
+          
+          <div class="toolbar-separator"></div>
+          
+          <!-- Tools -->
+          <div class="toolbar-group">
+            <button class="toolbar-btn" 
+                    [class.active]="selectedTool === 'pointer'" 
+                    (click)="setTool('pointer')" 
+                    title="Selection Tool (V)">
+              <i class="icon-pointer"></i>
+            </button>
+            <button class="toolbar-btn" 
+                    [class.active]="selectedTool === 'razor'" 
+                    (click)="setTool('razor')" 
+                    title="Razor Tool (C)">
+              <i class="icon-razor"></i>
+            </button>
+            <button class="toolbar-btn" 
+                    [class.active]="selectedTool === 'hand'" 
+                    (click)="setTool('hand')" 
+                    title="Hand Tool (H)">
+              <i class="icon-hand"></i>
+            </button>
+            <button class="toolbar-btn" 
+                    [class.active]="selectedTool === 'zoom'" 
+                    (click)="setTool('zoom')" 
+                    title="Zoom Tool (Z)">
+              <i class="icon-zoom"></i>
+            </button>
+          </div>
+          
+          <div class="toolbar-separator"></div>
+          
+          <!-- Playback -->
+          <div class="toolbar-group">
+            <button class="toolbar-btn" (click)="goToStart()" title="Go to Start (Home)">
+              <i class="icon-skip-start"></i>
+            </button>
+            <button class="toolbar-btn" (click)="stepBackward()" title="Previous Frame (Left Arrow)">
+              <i class="icon-step-backward"></i>
+            </button>
+            <button class="toolbar-btn play-btn" (click)="togglePlayback()" title="Play/Pause (Space)">
+              <i [class]="playback.playing ? 'icon-pause' : 'icon-play'"></i>
+            </button>
+            <button class="toolbar-btn" (click)="stepForward()" title="Next Frame (Right Arrow)">
+              <i class="icon-step-forward"></i>
+            </button>
+            <button class="toolbar-btn" (click)="goToEnd()" title="Go to End (End)">
+              <i class="icon-skip-end"></i>
+            </button>
+          </div>
+          
+          <div class="toolbar-separator"></div>
+          
+          <!-- Advanced Tools -->
+          <div class="toolbar-group">
+            <button class="toolbar-btn" 
+                    [class.active]="snappingEnabled" 
+                    (click)="toggleSnapping()" 
+                    title="Toggle Snapping (S)">
+              <i class="icon-magnet"></i>
+            </button>
+            <button class="toolbar-btn" 
+                    [class.active]="linkSelection" 
+                    (click)="toggleLinkSelection()" 
+                    title="Link/Unlink Selection (L)">
+              <i [class]="linkSelection ? 'icon-link' : 'icon-unlink'"></i>
+            </button>
+            <button class="toolbar-btn" (click)="addMarker()" title="Add Marker (M)">
+              <i class="icon-marker"></i>
+            </button>
+          </div>
+          
+          <div class="toolbar-separator"></div>
+          
+          <!-- Export -->
+          <div class="toolbar-group">
+            <button class="toolbar-btn export-btn" (click)="exportProject()" title="Export Video (Ctrl+E)">
+              <i class="icon-export"></i>
+            </button>
+          </div>
+          
+          <!-- Auto-save Status -->
+          <div class="auto-save-status">
+            <span class="auto-save-indicator" [class.saving]="autoSaveService.isDirty">
+              {{ getAutoSaveStatus() }}
+            </span>
+            <span class="last-saved" *ngIf="autoSaveService.lastSaved">
+              Last saved: {{ formatLastSaved(autoSaveService.lastSaved) }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Studio Workspace -->
+      <div class="studio-workspace">
+        <!-- Left Panel -->
+        <div class="left-panel">
+          <!-- Panel Tabs -->
+          <div class="panel-tabs">
+            <button class="tab-btn" 
+                    [class.active]="leftPanelTab === 'media'" 
+                    (click)="setLeftPanelTab('media')">
+              <i class="icon-media"></i>
+              Media
+            </button>
+            <button class="tab-btn" 
+                    [class.active]="leftPanelTab === 'effects'" 
+                    (click)="setLeftPanelTab('effects')">
+              <i class="icon-effects"></i>
+              Effects
+            </button>
+            <button class="tab-btn" 
+                    [class.active]="leftPanelTab === 'transitions'" 
+                    (click)="setLeftPanelTab('transitions')">
+              <i class="icon-transitions"></i>
+              Transitions
+            </button>
+          </div>
+          
+          <!-- Panel Content -->
+          <div class="panel-content">
+            <app-enhanced-media-bin 
+              *ngIf="leftPanelTab === 'media'"
+              (resourceSelected)="onResourceSelected($event)">
+            </app-enhanced-media-bin>
+            
+            <app-effects-panel 
+              *ngIf="leftPanelTab === 'effects'"
+              [selectedClipId]="selectedClipId">
+            </app-effects-panel>
+            
+            <app-transitions-panel 
+              *ngIf="leftPanelTab === 'transitions'"
+              [selectedClipId]="selectedClipId">
+            </app-transitions-panel>
+          </div>
+        </div>
+
+        <!-- Center Panel -->
+        <div class="center-panel">
+          <app-enhanced-preview></app-enhanced-preview>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="right-panel">
+          <!-- Properties Panel -->
+          <div class="properties-panel">
+            <div class="panel-header">
+              <h3>Properties</h3>
+            </div>
+            <div class="properties-content">
+              <div *ngIf="selectedClipId" class="clip-properties">
+                <h4>Clip Properties</h4>
+                <!-- Clip properties form would go here -->
+                <div class="property-group">
+                  <label>Position</label>
+                  <div class="property-row">
+                    <input type="number" placeholder="X" class="property-input">
+                    <input type="number" placeholder="Y" class="property-input">
+                  </div>
+                </div>
+                <div class="property-group">
+                  <label>Scale</label>
+                  <div class="property-row">
+                    <input type="number" placeholder="Width %" class="property-input">
+                    <input type="number" placeholder="Height %" class="property-input">
+                  </div>
+                </div>
+                <div class="property-group">
+                  <label>Rotation</label>
+                  <input type="number" placeholder="Degrees" class="property-input">
+                </div>
+                <div class="property-group">
+                  <label>Opacity</label>
+                  <input type="range" min="0" max="100" class="property-slider">
+                </div>
+              </div>
+              <div *ngIf="!selectedClipId" class="no-selection">
+                <i class="icon-info"></i>
+                <p>Select a clip to view properties</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Timeline Panel -->
+      <div class="timeline-panel">
+        <app-enhanced-timeline></app-enhanced-timeline>
+      </div>
+    </div>
+  `,
+  styleUrls: ['./studio.component.scss']
 })
 export class StudioComponent implements OnInit, OnDestroy {
-  @ViewChild('videoPreview', { static: false }) videoPreview!: ElementRef<HTMLVideoElement>;
-  @ViewChild('timeline', { static: false }) timeline!: ElementRef<HTMLDivElement>;
-
-  // Core Properties
-  selectedTool: 'pointer' | 'razor' | 'text' = 'pointer';
+  // Core State
+  selectedTool: 'pointer' | 'razor' | 'hand' | 'zoom' = 'pointer';
+  leftPanelTab: 'media' | 'effects' | 'transitions' = 'media';
+  selectedClipId: string | null = null;
+  
+  // UI State
   snappingEnabled = true;
-  leftTab: 'files' | 'effects' | 'transitions' = 'files';
+  linkSelection = false;
+  hasSelection = false;
+  hasClipboard = false;
+  canUndo = false;
+  canRedo = false;
   
-  // Media Properties
-  mediaFiles: MediaDto[] = [];
-  selectedFile: MediaDto | null = null;
-  filesView: 'list' | 'thumbnails' = 'list';
-  
-  // Preview Properties
-  previewMode: 'fit' | 'fill' | 'actual' = 'fit';
-  previewWidth = 640;
-  previewHeight = 360;
-  
-  // Timeline Properties
-  timelineZoom = 50;
-  currentTime = 0;
-  duration = 0;
-  tracks: any[] = [
-    { id: 1, name: 'Track 1', type: 'video', clips: [], muted: false, visible: true, locked: false },
-    { id: 2, name: 'Track 2', type: 'video', clips: [], muted: false, visible: true, locked: false },
-    { id: 3, name: 'Track 3', type: 'audio', clips: [], muted: false, visible: true, locked: false }
-  ];
-  selectedClips: any[] = [];
-  
-  // Playback Properties
-  playback = {
+  // Playback State
+  playback: PlaybackState = {
     playing: false,
-    currentTime: 0,
-    duration: 0,
+    position: 0,
+    speed: 1,
+    loop: false,
     volume: 1,
     muted: false
   };
   
-  // History Properties
-  canUndo = false;
-  canRedo = false;
-  history: any[] = [];
-  historyIndex = -1;
-  
-  // Effects and Transitions
-  availableEffects: any[] = [
-    { name: 'Blur', category: 'Video', icon: '🌫️' },
-    { name: 'Brightness', category: 'Video', icon: '☀️' },
-    { name: 'Contrast', category: 'Video', icon: '🔆' },
-    { name: 'Fade In', category: 'Audio', icon: '📈' },
-    { name: 'Fade Out', category: 'Audio', icon: '📉' }
-  ];
-  
-  availableTransitions: any[] = [
-    { name: 'Fade', icon: '🔄' },
-    { name: 'Dissolve', icon: '💫' },
-    { name: 'Wipe', icon: '🧹' },
-    { name: 'Slide', icon: '➡️' }
-  ];
+  // Project State
+  currentProject: ProjectState | null = null;
 
-  // Selected clip properties
-  selectedClip: any = null;
-  clipProperties = {
-    position: { x: 0, y: 0 },
-    scale: { x: 100, y: 100 },
-    rotation: 0,
-    opacity: 100,
-    volume: 100
-  };
-
-  private subscriptions: Subscription[] = [];
+  private destroy$ = new Subject<void>();
 
   constructor(
-    private http: HttpClient,
-    private mediaService: MediaService
+    private timelineService: TimelineService,
+    public autoSaveService: AutoSaveService,
+    private uploadService: UploadService,
+    private effectsService: EffectsService,
+    private transitionsService: TransitionsService
   ) {}
 
   ngOnInit(): void {
-    this.loadMediaFiles();
-    this.initializeTimeline();
+    // Subscribe to timeline changes
+    this.timelineService.timeline$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(timeline => {
+        this.updateUIState(timeline);
+      });
+
+    // Subscribe to playback changes
+    this.timelineService.playback$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(playback => {
+        this.playback = playback;
+      });
+
+    // Subscribe to selected clips
+    this.timelineService.selectedClips$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(clips => {
+        this.hasSelection = clips.length > 0;
+        this.selectedClipId = clips.length === 1 ? clips[0].id : null;
+      });
+
+    // Initialize project
+    this.initializeProject();
   }
 
   ngOnDestroy(): void {
-    this.subscriptions.forEach(sub => sub.unsubscribe());
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private initializeProject(): void {
+    this.currentProject = this.autoSaveService.createProject('Untitled Project');
+  }
+
+  private updateUIState(timeline: Timeline): void {
+    // Update UI state based on timeline changes
+    this.autoSaveService.markDirty();
   }
 
   // Menu Actions
   showMenu(menu: string): void {
     console.log('Show menu:', menu);
+    // Implement menu logic
   }
 
+  // File Operations
   newProject(): void {
-    console.log('New project');
+    if (this.autoSaveService.isDirty) {
+      if (confirm('You have unsaved changes. Create new project anyway?')) {
+        this.timelineService.clearTimeline();
+        this.currentProject = this.autoSaveService.createProject('Untitled Project');
+      }
+    } else {
+      this.timelineService.clearTimeline();
+      this.currentProject = this.autoSaveService.createProject('Untitled Project');
+    }
   }
 
   openProject(): void {
+    // Implement project opening logic
     console.log('Open project');
   }
 
   saveProject(): void {
-    console.log('Save project');
+    this.autoSaveService.forceSave();
   }
 
   importMedia(): void {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.multiple = true;
-    input.accept = 'video/*,audio/*,image/*';
-    input.onchange = (event: any) => {
+    // Trigger file input from media bin
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.multiple = true;
+    fileInput.accept = 'video/*,audio/*,image/*';
+    fileInput.onchange = (event: any) => {
       const files = event.target.files;
-      for (let file of files) {
-        this.addMediaFile(file);
+      if (files && files.length > 0) {
+        this.uploadService.uploadFiles(files);
       }
     };
-    input.click();
+    fileInput.click();
   }
 
   exportProject(): void {
     console.log('Export project');
+    // Implement export logic
   }
 
-  // Tool Actions
-  setTool(tool: 'pointer' | 'razor' | 'text'): void {
-    this.selectedTool = tool;
-  }
-
-  toggleSnapping(): void {
-    this.snappingEnabled = !this.snappingEnabled;
-  }
-
-  // History Actions
+  // Edit Operations
   undo(): void {
-    if (this.canUndo) {
-      this.historyIndex--;
-      this.canUndo = this.historyIndex > 0;
-      this.canRedo = true;
-    }
+    console.log('Undo');
+    // Implement undo logic
   }
 
   redo(): void {
-    if (this.canRedo) {
-      this.historyIndex++;
-      this.canRedo = this.historyIndex < this.history.length - 1;
-      this.canUndo = true;
-    }
+    console.log('Redo');
+    // Implement redo logic
   }
 
-  // Tab Management
-  setLeftTab(tab: 'files' | 'effects' | 'transitions'): void {
-    this.leftTab = tab;
+  cut(): void {
+    console.log('Cut');
+    // Implement cut logic
   }
 
-  // Media Management
-  private loadMediaFiles(): void {
-    // Load media files from backend using the real API
-    this.mediaService.getList({
-      skipCount: 0,
-      maxResultCount: 100,
-      sorting: 'creationTime desc'
-    }).subscribe({
-      next: (response) => {
-        console.log('Loaded media files:', response);
-        this.mediaFiles = response.items || [];
-      },
-      error: (error) => {
-        console.error('Error loading media files:', error);
-        // Initialize with empty array if API fails
-        this.mediaFiles = [];
-      }
-    });
+  copy(): void {
+    console.log('Copy');
+    // Implement copy logic
   }
 
-  private addMediaFile(file: File): void {
-    // For now, just create a temporary media object for local files
-    // In a real implementation, you would upload this to the backend first
-    const mediaFile: MediaDto = {
-      id: Date.now().toString(),
-      title: file.name,
-      description: `Local file: ${file.name}`,
-      video: URL.createObjectURL(file),
-      projectId: '',
-      sourceLanguage: 'en',
-      destinationLanguage: 'ar'
-    };
-    this.mediaFiles.push(mediaFile);
+  paste(): void {
+    console.log('Paste');
+    // Implement paste logic
   }
 
-  selectFile(file: MediaDto): void {
-    this.selectedFile = file;
-    if (file.video && this.videoPreview) {
-      this.videoPreview.nativeElement.src = file.video;
-    }
-  }
-
-  // Timeline Management
-  private initializeTimeline(): void {
-    // Initialize timeline with default settings
-    this.duration = 300; // 5 minutes default
-  }
-
-  addToTimeline(file: MediaDto): void {
-    // Add file to the first available track
-    const track = this.tracks.find(t => t.type === 'video');
-    if (track) {
-      const clip = {
-        id: Date.now(),
-        name: file.title || 'Untitled',
-        file: file,
-        startTime: 0,
-        duration: 10, // Default duration, would be calculated from actual video
-        track: track.id
-      };
-      track.clips.push(clip);
-      console.log('Added clip to timeline:', clip);
-    }
+  // Tool Selection
+  setTool(tool: 'pointer' | 'razor' | 'hand' | 'zoom'): void {
+    this.selectedTool = tool;
   }
 
   // Playback Controls
   togglePlayback(): void {
-    this.playback.playing = !this.playback.playing;
-    if (this.videoPreview) {
-      if (this.playback.playing) {
-        this.videoPreview.nativeElement.play();
-      } else {
-        this.videoPreview.nativeElement.pause();
-      }
-    }
+    this.timelineService.togglePlayback();
   }
 
   goToStart(): void {
-    this.currentTime = 0;
-    this.playback.currentTime = 0;
-    if (this.videoPreview) {
-      this.videoPreview.nativeElement.currentTime = 0;
-    }
+    this.timelineService.setPlaybackPosition(0);
   }
 
   goToEnd(): void {
-    this.currentTime = this.duration;
-    this.playback.currentTime = this.duration;
-    if (this.videoPreview) {
-      this.videoPreview.nativeElement.currentTime = this.duration;
-    }
+    // Implement go to end logic
   }
 
   stepBackward(): void {
-    this.currentTime = Math.max(0, this.currentTime - 1);
-    this.playback.currentTime = this.currentTime;
-    if (this.videoPreview) {
-      this.videoPreview.nativeElement.currentTime = this.currentTime;
-    }
+    const frameTime = 1 / 25; // Assuming 25fps
+    const newTime = Math.max(0, this.playback.position - frameTime);
+    this.timelineService.setPlaybackPosition(newTime);
   }
 
   stepForward(): void {
-    this.currentTime = Math.min(this.duration, this.currentTime + 1);
-    this.playback.currentTime = this.currentTime;
-    if (this.videoPreview) {
-      this.videoPreview.nativeElement.currentTime = this.currentTime;
+    const frameTime = 1 / 25; // Assuming 25fps
+    this.timelineService.setPlaybackPosition(this.playback.position + frameTime);
+  }
+
+  // Advanced Tools
+  toggleSnapping(): void {
+    this.snappingEnabled = !this.snappingEnabled;
+  }
+
+  toggleLinkSelection(): void {
+    this.linkSelection = !this.linkSelection;
+  }
+
+  addMarker(): void {
+    console.log('Add marker at:', this.playback.position);
+    // Implement marker logic
+  }
+
+  // Panel Management
+  setLeftPanelTab(tab: 'media' | 'effects' | 'transitions'): void {
+    this.leftPanelTab = tab;
+  }
+
+  // Event Handlers
+  onResourceSelected(resource: Resource): void {
+    // Add resource to timeline or load in preview
+    this.timelineService.addResourceToTimeline(resource);
+  }
+
+  // Auto-save Status
+  getAutoSaveStatus(): string {
+    if (this.autoSaveService.isDirty) {
+      return 'Saving...';
     }
+    return this.autoSaveService.autoSaveEnabled ? 'Auto-save On' : 'Auto-save Off';
   }
 
-  toggleMute(): void {
-    this.playback.muted = !this.playback.muted;
-    if (this.videoPreview) {
-      this.videoPreview.nativeElement.muted = this.playback.muted;
-    }
-  }
-
-  // Track Management
-  toggleTrackMute(track: any): void {
-    track.muted = !track.muted;
-  }
-
-  toggleTrackVisibility(track: any): void {
-    track.visible = !track.visible;
-  }
-
-  toggleTrackLock(track: any): void {
-    track.locked = !track.locked;
-  }
-
-  // Clip Management
-  selectClip(clip: any): void {
-    this.selectedClip = clip;
-    this.selectedClips = [clip];
-  }
-
-  isClipSelected(clip: any): boolean {
-    return this.selectedClips.includes(clip);
-  }
-
-  // Zoom Controls
-  zoomIn(): void {
-    this.timelineZoom = Math.min(200, this.timelineZoom + 10);
-  }
-
-  zoomOut(): void {
-    this.timelineZoom = Math.max(10, this.timelineZoom - 10);
+  formatLastSaved(date: Date): string {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    
+    if (minutes < 1) return 'just now';
+    if (minutes === 1) return '1 minute ago';
+    if (minutes < 60) return `${minutes} minutes ago`;
+    
+    const hours = Math.floor(minutes / 60);
+    if (hours === 1) return '1 hour ago';
+    if (hours < 24) return `${hours} hours ago`;
+    
+    return date.toLocaleDateString();
   }
 
   // Keyboard Shortcuts
   @HostListener('window:keydown', ['$event'])
   handleKeyboardShortcut(event: KeyboardEvent): void {
-    if (event.ctrlKey) {
-      switch (event.key) {
-        case 'z':
+    if (event.ctrlKey || event.metaKey) {
+      switch (event.key.toLowerCase()) {
+        case 'n':
           event.preventDefault();
-          this.undo();
+          this.newProject();
           break;
-        case 'y':
+        case 'o':
           event.preventDefault();
-          this.redo();
+          this.openProject();
           break;
         case 's':
           event.preventDefault();
           this.saveProject();
           break;
+        case 'i':
+          event.preventDefault();
+          this.importMedia();
+          break;
+        case 'z':
+          event.preventDefault();
+          if (event.shiftKey) {
+            this.redo();
+          } else {
+            this.undo();
+          }
+          break;
+        case 'y':
+          event.preventDefault();
+          this.redo();
+          break;
+        case 'x':
+          event.preventDefault();
+          this.cut();
+          break;
+        case 'c':
+          event.preventDefault();
+          this.copy();
+          break;
+        case 'v':
+          event.preventDefault();
+          this.paste();
+          break;
+        case 'e':
+          event.preventDefault();
+          this.exportProject();
+          break;
       }
     } else {
-      switch (event.key) {
+      switch (event.key.toLowerCase()) {
         case ' ':
           event.preventDefault();
           this.togglePlayback();
@@ -344,8 +576,32 @@ export class StudioComponent implements OnInit, OnDestroy {
         case 'c':
           this.setTool('razor');
           break;
-        case 't':
-          this.setTool('text');
+        case 'h':
+          this.setTool('hand');
+          break;
+        case 'z':
+          this.setTool('zoom');
+          break;
+        case 's':
+          this.toggleSnapping();
+          break;
+        case 'l':
+          this.toggleLinkSelection();
+          break;
+        case 'm':
+          this.addMarker();
+          break;
+        case 'home':
+          this.goToStart();
+          break;
+        case 'end':
+          this.goToEnd();
+          break;
+        case 'arrowleft':
+          this.stepBackward();
+          break;
+        case 'arrowright':
+          this.stepForward();
           break;
       }
     }

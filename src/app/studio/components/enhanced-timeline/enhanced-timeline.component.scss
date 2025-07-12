@@ -1,0 +1,475 @@
+.enhanced-timeline {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #2a2a2a;
+  color: #ffffff;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  border-top: 1px solid #404040;
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: #333333;
+  border-bottom: 1px solid #404040;
+  
+  .timeline-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    .btn {
+      background: #404040;
+      border: 1px solid #555555;
+      color: #ffffff;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      
+      &:hover {
+        background: #4a4a4a;
+        border-color: #666666;
+      }
+      
+      &.active {
+        background: #4a90e2;
+        border-color: #357abd;
+      }
+    }
+    
+    .separator {
+      width: 1px;
+      height: 20px;
+      background: #555555;
+      margin: 0 4px;
+    }
+  }
+  
+  .zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    .btn {
+      background: #404040;
+      border: 1px solid #555555;
+      color: #ffffff;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      
+      &:hover:not(:disabled) {
+        background: #4a4a4a;
+        border-color: #666666;
+      }
+      
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+    
+    .zoom-level {
+      font-size: 11px;
+      color: #cccccc;
+      min-width: 40px;
+      text-align: center;
+      font-family: monospace;
+    }
+  }
+}
+
+.timeline-ruler {
+  position: relative;
+  height: 40px;
+  background: #333333;
+  border-bottom: 1px solid #404040;
+  overflow: hidden;
+  
+  .ruler-canvas {
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+  }
+  
+  .playhead {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    z-index: 100;
+    pointer-events: none;
+    
+    .playhead-line {
+      width: 2px;
+      height: 100%;
+      background: #ff6b35;
+      box-shadow: 0 0 4px rgba(255, 107, 53, 0.5);
+    }
+    
+    .playhead-handle {
+      position: absolute;
+      top: -6px;
+      left: -8px;
+      width: 18px;
+      height: 18px;
+      background: #ff6b35;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      cursor: grab;
+      pointer-events: all;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      
+      &:active {
+        cursor: grabbing;
+      }
+      
+      &:hover {
+        background: #ff8c5a;
+        transform: scale(1.1);
+      }
+    }
+  }
+  
+  .time-tooltip {
+    position: absolute;
+    top: -30px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #ffffff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: monospace;
+    pointer-events: none;
+    z-index: 200;
+    transform: translateX(-50%);
+    
+    &::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 4px solid transparent;
+      border-top-color: rgba(0, 0, 0, 0.8);
+    }
+  }
+}
+
+.timeline-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  
+  .track-headers {
+    width: 200px;
+    background: #2e2e2e;
+    border-right: 1px solid #404040;
+    flex-shrink: 0;
+    overflow-y: auto;
+    
+    .track-header {
+      height: 60px;
+      border-bottom: 1px solid #404040;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      
+      &.video-track-header {
+        background: #2a2a2a;
+      }
+      
+      &.audio-track-header {
+        background: #252525;
+      }
+      
+      .track-info {
+        width: 100%;
+        
+        .track-name {
+          font-size: 12px;
+          font-weight: 600;
+          color: #ffffff;
+          margin-bottom: 6px;
+          display: block;
+        }
+        
+        .track-controls {
+          display: flex;
+          gap: 4px;
+          
+          .track-btn {
+            background: transparent;
+            border: 1px solid #555555;
+            color: #888888;
+            padding: 4px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            
+            &:hover {
+              background: #404040;
+              color: #cccccc;
+            }
+            
+            &.active {
+              background: #4a90e2;
+              border-color: #357abd;
+              color: #ffffff;
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  .timeline-tracks {
+    flex: 1;
+    overflow: auto;
+    background: #2a2a2a;
+    position: relative;
+    
+    .timeline-track {
+      height: 60px;
+      border-bottom: 1px solid #404040;
+      position: relative;
+      background: repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 49px,
+        #333333 49px,
+        #333333 50px
+      );
+      
+      &.video-track {
+        background-color: #2a2a2a;
+      }
+      
+      &.audio-track {
+        background-color: #252525;
+      }
+      
+      .timeline-clip {
+        position: absolute;
+        top: 6px;
+        height: 48px;
+        border-radius: 4px;
+        cursor: grab;
+        overflow: hidden;
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        
+        &:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        &.selected {
+          border-color: #4a90e2;
+          box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3);
+        }
+        
+        &:active {
+          cursor: grabbing;
+        }
+        
+        &.video-clip {
+          background: linear-gradient(135deg, #4a90e2, #357abd);
+          color: #ffffff;
+        }
+        
+        &.audio-clip {
+          background: linear-gradient(135deg, #5cb85c, #449d44);
+          color: #ffffff;
+        }
+        
+        .clip-thumbnail {
+          width: 40px;
+          height: 40px;
+          margin: 4px;
+          border-radius: 2px;
+          overflow: hidden;
+          flex-shrink: 0;
+          
+          img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+        }
+        
+        .clip-content {
+          flex: 1;
+          padding: 4px 8px;
+          min-width: 0;
+          
+          .clip-name {
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+          }
+          
+          .clip-duration {
+            font-size: 9px;
+            opacity: 0.8;
+            font-family: monospace;
+          }
+        }
+        
+        .waveform-container {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          pointer-events: none;
+          
+          .waveform-canvas {
+            width: 100%;
+            height: 100%;
+            opacity: 0.6;
+          }
+        }
+        
+        .clip-handles {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          pointer-events: none;
+          
+          .handle {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 8px;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: ew-resize;
+            pointer-events: all;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            
+            &.left {
+              left: 0;
+              border-radius: 4px 0 0 4px;
+            }
+            
+            &.right {
+              right: 0;
+              border-radius: 0 4px 4px 0;
+            }
+            
+            &:hover {
+              background: rgba(255, 255, 255, 0.6);
+              opacity: 1;
+            }
+          }
+        }
+        
+        &.selected .handle {
+          opacity: 1;
+        }
+      }
+    }
+  }
+}
+
+// Scrollbar styling
+.timeline-tracks::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.timeline-tracks::-webkit-scrollbar-track {
+  background: #2a2a2a;
+}
+
+.timeline-tracks::-webkit-scrollbar-thumb {
+  background: #555555;
+  border-radius: 6px;
+  
+  &:hover {
+    background: #666666;
+  }
+}
+
+.timeline-tracks::-webkit-scrollbar-corner {
+  background: #2a2a2a;
+}
+
+// Drag and drop styles
+.cdk-drag-preview {
+  background: rgba(74, 144, 226, 0.9);
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  transform: rotate(2deg);
+  opacity: 0.8;
+}
+
+.cdk-drag-placeholder {
+  opacity: 0.4;
+  background: rgba(74, 144, 226, 0.2);
+  border: 2px dashed #4a90e2;
+}
+
+.cdk-drag-animating {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.cdk-drop-list-dragging .timeline-clip:not(.cdk-drag-placeholder) {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+// Icons (using CSS pseudo-elements for simplicity)
+.icon-plus::before { content: '+'; }
+.icon-magnet::before { content: '🧲'; }
+.icon-zoom-out::before { content: '🔍-'; }
+.icon-zoom-in::before { content: '🔍+'; }
+.icon-fit::before { content: '⛶'; }
+.icon-volume-off::before { content: '🔇'; }
+.icon-volume-on::before { content: '🔊'; }
+.icon-eye::before { content: '👁️'; }
+.icon-eye-off::before { content: '🙈'; }
+.icon-lock::before { content: '🔒'; }
+.icon-unlock::before { content: '🔓'; }
+
+// Responsive design
+@media (max-width: 768px) {
+  .track-headers {
+    width: 150px;
+  }
+  
+  .timeline-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+  
+  .timeline-controls,
+  .zoom-controls {
+    justify-content: center;
+  }
+}
