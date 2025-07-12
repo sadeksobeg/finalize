@@ -1,0 +1,78 @@
+<div class="media-bin">
+  <div class="media-grid" *ngIf="resources.length > 0" cdkDropList id="media-bin">
+    <div class="media-item"
+         *ngFor="let resource of resources; trackBy: trackByResourceId"
+         [attr.data-resource-id]="resource.id"
+         cdkDrag
+         [cdkDragData]="resource"
+         (click)="selectResource(resource)"
+         (dblclick)="loadToPreview(resource)"
+         [class.selected]="selectedResource?.id === resource.id">
+
+      <div class="media-thumbnail">
+        <img *ngIf="resource.thumbnail"
+             [src]="resource.thumbnail"
+             [alt]="resource.name"
+             class="thumbnail-image"
+             loading="lazy">
+        <div *ngIf="!resource.thumbnail" class="thumbnail-placeholder">
+          <span class="file-icon" [ngSwitch]="resource.type">
+            <span *ngSwitchCase="'video'">🎬</span>
+            <span *ngSwitchCase="'audio'">🎵</span>
+            <span *ngSwitchCase="'image'">🖼️</span>
+            <span *ngSwitchDefault>📄</span>
+          </span>
+        </div>
+
+        <div class="media-overlay">
+          <div class="media-type-badge" [class]="'type-' + resource.type">
+            {{ resource.type.toUpperCase() }}
+          </div>
+          <div class="media-duration" *ngIf="resource.duration">
+            {{ formatDuration(resource.duration) }}
+          </div>
+        </div>
+
+        <div class="play-button" *ngIf="resource.type === 'video' || resource.type === 'audio'">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8,5.14V19.14L19,12.14L8,5.14Z"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="media-info">
+        <div class="media-name" [title]="resource.name">{{ resource.name }}</div>
+        <div class="media-details">
+          <span *ngIf="resource.width && resource.height">
+            {{ resource.width }}x{{ resource.height }}
+          </span>
+          <span *ngIf="resource.fps"> • {{ resource.fps }}fps</span>
+          <span *ngIf="resource.duration"> • {{ formatDuration(resource.duration) }}</span>
+        </div>
+      </div>
+
+      <div class="media-actions">
+        <button class="action-btn preview-btn"
+                (click)="$event.stopPropagation(); loadToPreview(resource)"
+                title="Load to Preview">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8,5.14V19.14L19,12.14L8,5.14Z"/>
+          </svg>
+        </button>
+        <button class="action-btn remove-btn"
+                (click)="$event.stopPropagation(); removeResource(resource)"
+                title="Remove">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="empty-state" *ngIf="resources.length === 0">
+    <div class="empty-icon">📁</div>
+    <div class="empty-text">No Media Files</div>
+    <div class="empty-subtext">Import video, audio, or image files to get started</div>
+  </div>
+</div>

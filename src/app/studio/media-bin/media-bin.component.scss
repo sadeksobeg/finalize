@@ -1,0 +1,81 @@
+/* Media Bin Component Styles */
+.media-bin {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #2b2b2b;
+  color: #ffffff;
+}
+
+.media-bin-header {
+  padding: 8px 12px;
+  background: #353535;
+  border-bottom: 1px solid #555;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.media-bin-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.media-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  cursor: pointer;
+  border-radius: 3px;
+  margin-bottom: 2px;
+  gap: 8px;
+}
+
+.media-item:hover {
+  background: #353535;
+}
+
+.media-item.selected {
+  background: #0078d4;
+}
+
+.media-thumbnail {
+  width: 40px;
+  height: 30px;
+  background: #404040;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.media-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 2px;
+}
+
+.media-icon {
+  font-size: 16px;
+}
+
+.media-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.media-name {
+  font-size: 12px;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.media-details {
+  font-size: 10px;
+  color: #cccccc;
+  margin-top: 2px;
+}

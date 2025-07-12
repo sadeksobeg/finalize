@@ -1,0 +1,362 @@
+<!-- Exact OpenShot Video Editor Interface -->
+<div class="openshot-editor">
+  
+  <!-- OpenShot Menu Bar (Exact Match) -->
+  <div class="openshot-menubar">
+    <div class="menu-bar">
+      <div class="menu-item" (click)="showMenu('file')">File</div>
+      <div class="menu-item" (click)="showMenu('edit')">Edit</div>
+      <div class="menu-item" (click)="showMenu('title')">Title</div>
+      <div class="menu-item" (click)="showMenu('view')">View</div>
+      <div class="menu-item" (click)="showMenu('help')">Help</div>
+    </div>
+
+    <!-- OpenShot Toolbar (Exact Match) -->
+    <div class="openshot-toolbar">
+      <!-- File Operations -->
+      <button class="toolbar-btn" (click)="newProject()" title="New Project">
+        <i class="icon">📄</i>
+      </button>
+      <button class="toolbar-btn" (click)="openProject()" title="Open Project">
+        <i class="icon">📁</i>
+      </button>
+      <button class="toolbar-btn" (click)="saveProject()" title="Save Project">
+        <i class="icon">💾</i>
+      </button>
+      <button class="toolbar-btn" (click)="importMedia()" title="Import Files">
+        <i class="icon">📥</i>
+      </button>
+      
+      <div class="toolbar-separator"></div>
+      
+      <!-- Edit Operations -->
+      <button class="toolbar-btn" [disabled]="!canUndo" (click)="undo()" title="Undo">
+        <i class="icon">↶</i>
+      </button>
+      <button class="toolbar-btn" [disabled]="!canRedo" (click)="redo()" title="Redo">
+        <i class="icon">↷</i>
+      </button>
+      
+      <div class="toolbar-separator"></div>
+      
+      <!-- Tools -->
+      <button class="toolbar-btn" [class.active]="selectedTool === 'pointer'" (click)="setTool('pointer')" title="Selection Tool">
+        <i class="icon">🔗</i>
+      </button>
+      <button class="toolbar-btn" [class.active]="selectedTool === 'razor'" (click)="setTool('razor')" title="Razor Tool">
+        <i class="icon">🔪</i>
+      </button>
+      <button class="toolbar-btn" [class.active]="snappingEnabled" (click)="toggleSnapping()" title="Snapping">
+        <i class="icon">🧲</i>
+      </button>
+      
+      <div class="toolbar-separator"></div>
+      
+      <!-- Playback -->
+      <button class="toolbar-btn" (click)="goToStart()" title="Jump to Start">
+        <i class="icon">⏮</i>
+      </button>
+      <button class="toolbar-btn" (click)="stepBackward()" title="Rewind">
+        <i class="icon">⏪</i>
+      </button>
+      <button class="toolbar-btn play-btn" (click)="togglePlayback()" title="Play">
+        <i class="icon">{{ playback.playing ? '⏸' : '▶' }}</i>
+      </button>
+      <button class="toolbar-btn" (click)="stepForward()" title="Fast Forward">
+        <i class="icon">⏩</i>
+      </button>
+      <button class="toolbar-btn" (click)="goToEnd()" title="Jump to End">
+        <i class="icon">⏭</i>
+      </button>
+      
+      <div class="toolbar-separator"></div>
+      
+      <!-- Export -->
+      <button class="toolbar-btn export-btn" (click)="exportProject()" title="Export Video">
+        <i class="icon">🎬</i>
+      </button>
+    </div>
+  </div>
+
+  <!-- OpenShot Main Workspace -->
+  <div class="openshot-workspace">
+
+    <!-- Left Panel - Project Files (Exact OpenShot Style) -->
+    <div class="left-panel">
+      <!-- Project Files Header -->
+      <div class="panel-header">
+        <span class="panel-title">Project Files</span>
+        <div class="panel-controls">
+          <button class="panel-btn" title="Refresh">🔄</button>
+          <button class="panel-btn" title="Settings">⚙️</button>
+        </div>
+      </div>
+
+      <!-- File Filter Bar (Exact OpenShot Style) -->
+      <div class="file-filter-bar">
+        <button class="filter-btn active">Show All</button>
+        <button class="filter-btn">Video</button>
+        <button class="filter-btn">Audio</button>
+        <button class="filter-btn">Image</button>
+        <button class="filter-btn">Filter</button>
+      </div>
+
+      <!-- Tabs (Exact OpenShot Style) -->
+      <div class="left-tabs">
+        <button class="tab-btn" [class.active]="leftTab === 'files'" (click)="setLeftTab('files')">
+          Project Files
+        </button>
+        <button class="tab-btn" [class.active]="leftTab === 'transitions'" (click)="setLeftTab('transitions')">
+          Transitions
+        </button>
+        <button class="tab-btn" [class.active]="leftTab === 'effects'" (click)="setLeftTab('effects')">
+          Effects
+        </button>
+        <button class="tab-btn">Emojis</button>
+      </div>
+
+      <!-- Tab Content -->
+      <div class="tab-content">
+        <!-- Project Files Tab -->
+        <div *ngIf="leftTab === 'files'" class="files-tab">
+          <div class="file-list">
+            <div *ngFor="let file of mediaFiles"
+                 class="file-item"
+                 [class.selected]="selectedFile === file"
+                 (click)="selectFile(file)"
+                 (dblclick)="addToTimeline(file)">
+              <div class="file-thumbnail">
+                <img *ngIf="file.video" [src]="file.video" alt="thumbnail">
+                <div *ngIf="!file.video" class="file-icon">
+                  🎬
+                </div>
+              </div>
+              <div class="file-info">
+                <div class="file-name">{{ file.title || 'Untitled' }}</div>
+                <div class="file-details">{{ file.description || 'No description' }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transitions Tab -->
+        <div *ngIf="leftTab === 'transitions'" class="transitions-tab">
+          <div class="transition-list">
+            <div *ngFor="let transition of availableTransitions" class="transition-item">
+              <div class="transition-icon">{{ transition.icon }}</div>
+              <div class="transition-name">{{ transition.name }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Effects Tab -->
+        <div *ngIf="leftTab === 'effects'" class="effects-tab">
+          <div class="effect-list">
+            <div *ngFor="let effect of availableEffects" class="effect-item">
+              <div class="effect-icon">{{ effect.icon }}</div>
+              <div class="effect-info">
+                <div class="effect-name">{{ effect.name }}</div>
+                <div class="effect-category">{{ effect.category }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center Panel - Video Preview (Exact OpenShot Style) -->
+    <div class="center-panel">
+      <!-- Preview Header -->
+      <div class="preview-header">
+        <span class="preview-title">Video Preview</span>
+        <div class="preview-controls">
+          <button class="preview-btn" title="Fit">📐</button>
+          <button class="preview-btn" title="Settings">⚙️</button>
+        </div>
+      </div>
+
+      <!-- Video Preview Area -->
+      <div class="video-preview-container">
+        <div class="video-preview-wrapper">
+          <video #videoPreview 
+                 class="video-preview"
+                 [style.width.px]="previewWidth"
+                 [style.height.px]="previewHeight"
+                 controls="false">
+            <source src="" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+          
+          <!-- Preview Overlay -->
+          <div class="preview-overlay">
+            <div class="preview-info">
+              <span>{{ currentTime | number:'1.2-2' }}s / {{ duration | number:'1.2-2' }}s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simple Playback Controls (OpenShot Style) -->
+      <div class="playback-controls">
+        <button class="control-btn" (click)="goToStart()" title="Jump to Start">
+          <i class="icon">⏮</i>
+        </button>
+        <button class="control-btn" (click)="stepBackward()" title="Previous Frame">
+          <i class="icon">⏪</i>
+        </button>
+        <button class="control-btn play-btn" (click)="togglePlayback()" title="Play/Pause">
+          <i class="icon">{{ playback.playing ? '⏸' : '▶' }}</i>
+        </button>
+        <button class="control-btn" (click)="stepForward()" title="Next Frame">
+          <i class="icon">⏩</i>
+        </button>
+        <button class="control-btn" (click)="goToEnd()" title="Jump to End">
+          <i class="icon">⏭</i>
+        </button>
+        
+        <div class="volume-controls">
+          <button class="control-btn" (click)="toggleMute()" title="Mute/Unmute">
+            <i class="icon">{{ playback.muted ? '🔇' : '🔊' }}</i>
+          </button>
+          <input type="range" 
+                 class="volume-slider" 
+                 min="0" 
+                 max="1" 
+                 step="0.1" 
+                 [(ngModel)]="playback.volume">
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel - Properties (Simple OpenShot Style) -->
+    <div class="right-panel">
+      <div class="panel-header">
+        <span class="panel-title">Properties</span>
+      </div>
+      
+      <div class="properties-content">
+        <div *ngIf="selectedClip" class="clip-properties">
+          <h4>Clip Properties</h4>
+          
+          <div class="property-group">
+            <label>Position</label>
+            <div class="property-row">
+              <input type="number" [(ngModel)]="clipProperties.position.x" placeholder="X">
+              <input type="number" [(ngModel)]="clipProperties.position.y" placeholder="Y">
+            </div>
+          </div>
+          
+          <div class="property-group">
+            <label>Scale</label>
+            <div class="property-row">
+              <input type="number" [(ngModel)]="clipProperties.scale.x" placeholder="Width %">
+              <input type="number" [(ngModel)]="clipProperties.scale.y" placeholder="Height %">
+            </div>
+          </div>
+          
+          <div class="property-group">
+            <label>Rotation</label>
+            <input type="number" [(ngModel)]="clipProperties.rotation" placeholder="Degrees">
+          </div>
+          
+          <div class="property-group">
+            <label>Opacity</label>
+            <input type="range" min="0" max="100" [(ngModel)]="clipProperties.opacity">
+            <span>{{ clipProperties.opacity }}%</span>
+          </div>
+        </div>
+        
+        <div *ngIf="!selectedClip" class="no-selection">
+          <p>Select a clip to view properties</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Panel - Timeline (Exact OpenShot Style) -->
+  <div class="timeline-panel">
+    <!-- Timeline Header -->
+    <div class="timeline-header">
+      <div class="timeline-tabs">
+        <button class="timeline-tab active">Timeline</button>
+      </div>
+      
+      <div class="timeline-controls">
+        <button class="timeline-btn" (click)="zoomOut()" title="Zoom Out">🔍-</button>
+        <span class="zoom-level">{{ timelineZoom }}%</span>
+        <button class="timeline-btn" (click)="zoomIn()" title="Zoom In">🔍+</button>
+        
+        <div class="timeline-separator"></div>
+        
+        <button class="timeline-btn" [class.active]="snappingEnabled" (click)="toggleSnapping()" title="Snapping">
+          🧲
+        </button>
+      </div>
+    </div>
+
+    <!-- Timeline Content -->
+    <div class="timeline-content">
+      <!-- Timeline Ruler -->
+      <div class="timeline-ruler">
+        <div class="time-markers">
+          <div *ngFor="let marker of [0,1,2,3,4,5,6,7,8,9,10]" 
+               class="time-marker"
+               [style.left.%]="marker * 10">
+            <span class="time-label">{{ marker * 30 }}s</span>
+          </div>
+        </div>
+        
+        <!-- Playhead -->
+        <div class="playhead" [style.left.%]="(currentTime / duration) * 100"></div>
+      </div>
+
+      <!-- Tracks Area -->
+      <div class="tracks-container">
+        <!-- Track Headers -->
+        <div class="track-headers">
+          <div *ngFor="let track of tracks" class="track-header">
+            <div class="track-info">
+              <span class="track-name">{{ track.name }}</span>
+              <div class="track-controls">
+                <button class="track-btn" 
+                        [class.active]="!track.muted" 
+                        (click)="toggleTrackMute(track)" 
+                        title="Mute">
+                  {{ track.muted ? '🔇' : '🔊' }}
+                </button>
+                <button class="track-btn" 
+                        [class.active]="track.visible" 
+                        (click)="toggleTrackVisibility(track)" 
+                        title="Visibility">
+                  {{ track.visible ? '👁️' : '🙈' }}
+                </button>
+                <button class="track-btn" 
+                        [class.active]="track.locked" 
+                        (click)="toggleTrackLock(track)" 
+                        title="Lock">
+                  {{ track.locked ? '🔒' : '🔓' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Timeline Tracks -->
+        <div class="timeline-tracks" #timeline>
+          <div *ngFor="let track of tracks" class="timeline-track">
+            <div *ngFor="let clip of track.clips" 
+                 class="timeline-clip"
+                 [class.selected]="isClipSelected(clip)"
+                 (click)="selectClip(clip)"
+                 [style.left.px]="clip.startTime * timelineZoom"
+                 [style.width.px]="clip.duration * timelineZoom">
+              <div class="clip-content">
+                <span class="clip-name">{{ clip.name }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
